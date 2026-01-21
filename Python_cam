@@ -1,0 +1,59 @@
+import imaplib
+import email
+import os
+import datetime
+
+# Configurar el acceso al correo
+IMAP_SERVER = "imap.gmail.com"  # Cambia esto según tu proveedor (ej: Outlook: outlook.office365.com)
+EMAIL_ACCOUNT = "jjjfdezgut@gmail.com"
+EMAIL_PASSWORD = "gntx tsjr cdyz cdeb"
+# DOWNLOAD_FOLDER = "C:/Users/jujofernandez/TMP_CORREOS/jjjfdezgut"  # Carpeta donde se guardarán los adjuntos
+
+ruta_base = r"C:/Users/jujofernandez/TMP_CORREOS"
+# Obtener la fecha actual en formato YYYYMMDD
+fecha_actual = datetime.datetime.now().strftime("%Y%m%d")
+
+# Definir el directorio donde se guardarán los archivos
+DOWNLOAD_FOLDER = os.path.join(ruta_base, fecha_actual)
+
+# Conectar a la bandeja de entrada
+mail = imaplib.IMAP4_SSL(IMAP_SERVER)
+#######mail.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
+# mail.select("send")  # Carpeta a revisar
+mail.login("jjjfdezgut@gmail.com", "gntx tsjr cdyz cdeb")    #PRU
+mail.select('"[Gmail]/Enviados"')
+
+# Buscar correos no leídos con adjuntos
+status, messages = mail.search(None, 'ALL')  # 'ALL' si quieres todos los correos
+messages = messages[0].split()
+
+# Calcular la fecha de ayer en el formato IMAP (dd-Mmm-yyyy)
+semana = datetime.datetime.now() - datetime.timedelta(days=14)
+date_str = semana.strftime("%d-%b-%Y")  # Ejemplo: 11-Feb-2025
+
+# Buscar correos enviados en la fecha de ayer
+status, messages = mail.search(None, f'SINCE {date_str}')  # Filtrar correos desde ayer
+messages = messages[0].split()
+
+if not os.path.exists(DOWNLOAD_FOLDER):
+    os.makedirs(DOWNLOAD_FOLDER)
+
+for num in messages:
+    status, data = mail.fetch(num, '(RFC822)')
+    msg = email.message_from_bytes(data[0][1])
+    
+    for part in msg.walk():
+        if part.get_content_maintype() == 'multipart':
+            continue
+        if part.get("Content-Disposition") is None:
+            continue
+
+        filename = part.get_filename()
+        if filename:
+            filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+            with open(filepath, "wb") as f:
+                f.write(part.get_payload(decode=True))
+            print(f"Archivo guardado: {filepath}")
+
+mail.close()
+mail.logout()
